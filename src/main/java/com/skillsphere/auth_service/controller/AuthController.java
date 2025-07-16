@@ -5,6 +5,7 @@ import com.skillsphere.auth_service.model.User;
 import com.skillsphere.auth_service.repository.RoleRepository;
 import com.skillsphere.auth_service.repository.UserRepository;
 import com.skillsphere.auth_service.security.JwtUtil;
+import com.skillsphere.auth_service.service.AuditService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,6 +32,8 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private AuditService auditService;
 
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody Map<String, String> request) {
@@ -39,8 +42,10 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(
                             request.get("username"), request.get("password")));
             String token = jwtUtil.generateToken(request.get("username"));
+            auditService.log("LOGIN", request.get("username"), "User logged in successfully");
             return Collections.singletonMap("token", token);
         } catch (AuthenticationException e) {
+            auditService.log("LOGIN_FAIL", request.get("username"), "Invalid username or password");
             throw new RuntimeException("Invalid username or password");
         }
     }
@@ -48,9 +53,11 @@ public class AuthController {
     @PostMapping("/register")
     public Map<String, String> register(@RequestBody Map<String, String> request) {
         if (userRepository.findByUsername(request.get("username")).isPresent()) {
+            auditService.log("REGISTER_FAIL", request.get("username"), "Username already exists");
             throw new RuntimeException("Username already exists");
         }
         if (userRepository.findByEmail(request.get("email")).isPresent()) {
+            auditService.log("REGISTER_FAIL", request.get("username"), "Email already exists");
             throw new RuntimeException("Email already exists");
         }
         Role userRole = roleRepository.findByName("ROLE_USER")
@@ -62,6 +69,7 @@ public class AuthController {
         user.setEnabled(true);
         user.setRoles(Collections.singleton(userRole));
         userRepository.save(user);
+        auditService.log("REGISTER", user.getUsername(), "User registered successfully");
         return Collections.singletonMap("message", "User registered successfully");
     }
 

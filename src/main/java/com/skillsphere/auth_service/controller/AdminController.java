@@ -4,6 +4,7 @@ import com.skillsphere.auth_service.model.Role;
 import com.skillsphere.auth_service.model.User;
 import com.skillsphere.auth_service.repository.RoleRepository;
 import com.skillsphere.auth_service.repository.UserRepository;
+import com.skillsphere.auth_service.service.AuditService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,8 @@ public class AdminController {
     private UserRepository userRepository;
     @Autowired
     private RoleRepository roleRepository;
+    @Autowired
+    private AuditService auditService;
 
     @GetMapping("/users")
     public List<Map<String, Object>> listUsers() {
@@ -41,6 +44,7 @@ public class AdminController {
                 .collect(Collectors.toSet());
         user.setRoles(roleEntities);
         userRepository.save(user);
+        auditService.log("ASSIGN_ROLES", user.getUsername(), "Assigned roles: " + roles);
         return Map.of(
                 "id", user.getId(),
                 "username", user.getUsername(),
