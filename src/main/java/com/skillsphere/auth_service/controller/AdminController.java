@@ -14,6 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -64,5 +69,34 @@ public class AdminController {
                 "totalUsers", userCount,
                 "adminUsers", adminCount,
                 "auditLogEntries", auditLogCount);
+    }
+
+    @GetMapping("/audit-logs/export")
+    public ResponseEntity<byte[]> exportAuditLogsAsCsv() {
+        var logs = auditLogRepository.findAll();
+        StringBuilder csv = new StringBuilder();
+        csv.append("id,action,username,details,timestamp\n");
+        for (var log : logs) {
+            csv.append(log.getId()).append(",")
+                    .append(escapeCsv(log.getAction())).append(",")
+                    .append(escapeCsv(log.getUsername())).append(",")
+                    .append(escapeCsv(log.getDetails())).append(",")
+                    .append(log.getTimestamp()).append("\n");
+        }
+        byte[] csvBytes = csv.toString().getBytes(StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=audits.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(csvBytes);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null)
+            return "";
+        String escaped = value.replace("\"", "\"\"");
+        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+            return '"' + escaped + '"';
+        }
+        return escaped;
     }
 }

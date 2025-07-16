@@ -45,25 +45,31 @@ public class AdminControllerTest {
 
     @Test
     void assignRolesToUser() throws Exception {
-        // Create a user
+        String unique = String.valueOf(System.currentTimeMillis());
+        String username = "testuser2_" + unique;
+        String email = "testuser2_" + unique + "@example.com";
+        // Register user
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
-                        java.util.Map.of("username", "testuser2", "email", "testuser2@example.com", "password",
+                        java.util.Map.of("username", username, "email", email, "password",
                                 "testpass2"))))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("User registered successfully"));
         // Get user id
         String usersJson = mockMvc.perform(get("/api/admin/users")
                 .header("Authorization", "Bearer " + adminJwt))
                 .andReturn().getResponse().getContentAsString();
-        long userId = objectMapper.readTree(usersJson)
-                .findValuesAsText("username").contains("testuser2")
-                        ? objectMapper.readTree(usersJson)
-                                .findValues("id").get(
-                                        objectMapper.readTree(usersJson).findValuesAsText("username")
-                                                .indexOf("testuser2"))
-                                .asLong()
-                        : -1;
+        com.fasterxml.jackson.databind.JsonNode usersNode = objectMapper.readTree(usersJson);
+        int idx = -1;
+        for (int i = 0; i < usersNode.size(); i++) {
+            if (usersNode.get(i).get("username").asText().equals(username)) {
+                idx = i;
+                break;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(idx != -1, username + " not found in user list");
+        long userId = usersNode.get(idx).get("id").asLong();
         // Assign ROLE_ADMIN
         mockMvc.perform(put("/api/admin/user/" + userId + "/roles")
                 .header("Authorization", "Bearer " + adminJwt)
