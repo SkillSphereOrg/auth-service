@@ -10,6 +10,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,5 +63,15 @@ public class AuthController {
         user.setRoles(Collections.singleton(userRole));
         userRepository.save(user);
         return Collections.singletonMap("message", "User registered successfully");
+    }
+
+    @GetMapping("/me")
+    public Map<String, Object> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return Map.of(
+                "username", user.getUsername(),
+                "email", user.getEmail(),
+                "roles", user.getRoles().stream().map(r -> r.getName()).toArray());
     }
 }
