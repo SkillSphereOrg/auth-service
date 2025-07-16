@@ -4,6 +4,7 @@ import com.skillsphere.auth_service.model.Role;
 import com.skillsphere.auth_service.model.User;
 import com.skillsphere.auth_service.repository.RoleRepository;
 import com.skillsphere.auth_service.repository.UserRepository;
+import com.skillsphere.auth_service.repository.AuditLogRepository;
 import com.skillsphere.auth_service.service.AuditService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,8 @@ public class AdminController {
     private UserRepository userRepository;
     @Autowired
     private RoleRepository roleRepository;
+    @Autowired
+    private AuditLogRepository auditLogRepository;
     @Autowired
     private AuditService auditService;
 
@@ -49,5 +52,17 @@ public class AdminController {
                 "id", user.getId(),
                 "username", user.getUsername(),
                 "roles", user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
+    }
+
+    @GetMapping("/analytics")
+    public Map<String, Object> getAnalytics() {
+        long userCount = userRepository.count();
+        long adminCount = userRepository.findAll().stream()
+                .filter(u -> u.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN"))).count();
+        long auditLogCount = auditLogRepository.count();
+        return Map.of(
+                "totalUsers", userCount,
+                "adminUsers", adminCount,
+                "auditLogEntries", auditLogCount);
     }
 }
