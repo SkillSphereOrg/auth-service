@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -41,7 +42,10 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.get("username"), request.get("password")));
-            String token = jwtUtil.generateToken(request.get("username"));
+            User user = userRepository.findByUsername(request.get("username")).orElseThrow();
+            String token = jwtUtil.generateToken(
+                    request.get("username"),
+                    user.getRoles().stream().map(Role::getName).collect(Collectors.toList()));
             auditService.log("LOGIN", request.get("username"), "User logged in successfully");
             return Collections.singletonMap("token", token);
         } catch (AuthenticationException e) {
